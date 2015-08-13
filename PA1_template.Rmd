@@ -1,25 +1,97 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
 
+##What is mean total number of steps taken per day?
 
-## Loading and preprocessing the data
+```{r}
+rawdata <- read.csv("activity.csv", na.strings = c("NA"))
+result <- aggregate(steps ~ date, data = rawdata, sum)
+hist(result$steps)
+```
 
+Mean is: 
+```{r}
+mean(result$steps)
+```
 
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
+Median is:
+```{r}
+median(result$steps)
+```
 
 
 
-## Are there differences in activity patterns between weekdays and weekends?
+##What is the average daily activity pattern?
+
+Time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r}
+MeanStepsAcrossIntervals <- aggregate(steps ~ interval, data = rawdata, mean)
+plot(MeanStepsAcrossIntervals$interval, MeanStepsAcrossIntervals$steps, type = "l")
+```
+
+
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r}
+MeanStepsAcrossIntervals[which.max(MeanStepsAcrossIntervals$steps),"interval"]
+```
+
+
+##Imputing missing values
+
+Calculate and report the total number of missing values in the dataset
+```{r}
+length(which(is.na(rawdata$steps)))
+```
+
+Devise a strategy for filling in all of the missing values in the dataset. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+I'll take means for 5-min intervals as target values.
+
+```{r}
+EnrichedData = cbind(rawdata)
+for (row in 1:nrow(EnrichedData)) {
+  if (is.na(EnrichedData$steps[row])) {
+    matchingdata = which(MeanStepsAcrossIntervals$interval == EnrichedData$interval[row])
+    EnrichedData$steps[row] <- MeanStepsAcrossIntervals[matchingdata[1],"steps"]
+  }
+}
+```
+
+Make a histogram of the total number of steps taken each day
+```{r}
+resultEnrichedData <- aggregate(steps ~ date, data = EnrichedData, sum)
+hist(resultEnrichedData$steps)
+```
+
+Mean is: 
+```{r}
+mean(resultEnrichedData$steps)
+```
+
+Median is:
+```{r}
+median(resultEnrichedData$steps)
+```
+
+##Are there differences in activity patterns between weekdays and weekends?
+
+Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.
+```{r}
+NewData = cbind(EnrichedData)
+NewData$DateAsDate <- strptime(NewData$date, "%Y-%m-%e")
+NewData$WeekdayNo <- ifelse(format(NewData$DateAsDate, "%u") %in% c(6,7), "weekend", "weekday")
+NewData$WeekdayNo <- factor(NewData$WeekdayNo)
+```
+
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+```{r}
+WeekdayMeans <- aggregate(steps ~ interval, data = subset(NewData, WeekdayNo == "weekday"), mean)
+plot(WeekdayMeans$interval, WeekdayMeans$steps, type = "l", main = "Weekdays")
+```
+
+```{r}
+WeekendMeans <- aggregate(steps ~ interval, data = subset(NewData, WeekdayNo == "weekend"), mean)
+plot(WeekendMeans$interval, WeekendMeans$steps, type = "l", main = "Weekends")
+
+```
+
+
